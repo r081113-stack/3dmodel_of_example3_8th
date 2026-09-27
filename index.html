@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ラグランジュ乗数の意味 ― 最適値の感度</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;background:#f4f6f8;color:#20242a}
+  header{background:#fff;border-bottom:1px solid #d9dde2;padding:18px 24px}
+  h1{font-size:1.35rem;margin:0 0 6px}
+  .lead{color:#555;line-height:1.6}
+  .controls{background:#fff;padding:14px 24px;border-bottom:1px solid #d9dde2;display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+  .control{display:flex;align-items:center;gap:10px}
+  input[type=range]{width:min(360px,65vw)}
+  .value{font-weight:700;min-width:48px;text-align:center}
+  button{border:1px solid #bbb;background:#fff;border-radius:7px;padding:8px 13px;cursor:pointer}
+  button:hover{background:#f0f2f4}
+  .plots{display:grid;grid-template-columns:1.45fr 1fr;gap:12px;padding:12px}
+  .panel{background:#fff;border:1px solid #d9dde2;border-radius:9px;overflow:hidden}
+  .panel h2{font-size:1rem;margin:0;padding:12px 14px 4px}
+  .caption{font-size:.88rem;color:#666;padding:0 14px 8px;line-height:1.5}
+  #plot3d{width:100%;height:620px}
+  #plot2d{width:100%;height:620px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 12px 12px}
+  .card{background:#fff;border:1px solid #d9dde2;border-radius:9px;padding:12px;line-height:1.55}
+  .card .label{font-size:.82rem;color:#666}
+  .card .big{font-size:1.08rem;font-weight:700;margin-top:3px}
+  .explain{margin:0 12px 16px;background:#fff;border:1px solid #d9dde2;border-radius:9px;padding:15px 18px;line-height:1.75}
+  .formula{font-family:"Times New Roman","Noto Serif JP",serif;font-size:1.05rem;margin:8px 0}
+  @media(max-width:900px){
+    .plots{grid-template-columns:1fr}
+    #plot3d,#plot2d{height:500px}
+    .cards{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:520px){
+    .cards{grid-template-columns:1fr}
+    #plot3d,#plot2d{height:430px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>ラグランジュ乗数 λ の意味 ― 最適値の変化率</h1>
+  <div class="lead">
+    <b>目的関数：</b> z = xy　
+    <b>制約：</b> x² + 4y² = k　
+    <br>
+    k を動かすと制約楕円と極値点が動き、右のグラフでは
+    <b>「最適値のグラフの傾き = λ」</b> が確認できます。
+  </div>
+</header>
+
+<div class="controls">
+  <div class="control">
+    <label for="kRange"><b>制約値 k</b></label>
+    <input id="kRange" type="range" min="0.5" max="10" step="0.1" value="4">
+    <span id="kValue" class="value">4.0</span>
+  </div>
+  <button id="reset" type="button">k = 4 に戻す</button>
+  <button id="toggleMin" type="button">最大・最小を切替</button>
+</div>
+
+<div class="plots">
+  <section class="panel">
+    <h2>① 曲面 z = xy と制約曲線</h2>
+    <div class="caption">
+      楕円 x² + 4y² = k を曲面上に持ち上げた空間曲線を表示。
+      赤い点は現在選択している極値点です。ドラッグで回転、ホイールで拡大・縮小できます。
+    </div>
+    <div id="plot3d"></div>
+  </section>
+
+  <section class="panel">
+    <h2>② 最適値 F(k) とその傾き</h2>
+    <div class="caption">
+      最大値は F<sub>max</sub>(k)=k/4、最小値は F<sub>min</sub>(k)=−k/4。
+      黒い点が現在の k、接線の傾きが λ です。
+    </div>
+    <div id="plot2d"></div>
+  </section>
+</div>
+
+<div class="cards">
+  <div class="card">
+    <div class="label">現在の k</div>
+    <div id="cardK" class="big">4.0</div>
+  </div>
+  <div class="card">
+    <div class="label">極値点 (x, y)</div>
+    <div id="cardXY" class="big">(√2, 1/√2)</div>
+  </div>
+  <div class="card">
+    <div class="label">極値 f(x,y)</div>
+    <div id="cardF" class="big">1</div>
+  </div>
+  <div class="card">
+    <div class="label">ラグランジュ乗数 λ</div>
+    <div id="cardLambda" class="big">1/4</div>
+  </div>
+</div>
+
+<div class="explain">
+  <b>この図が示していること</b>
+  <div class="formula">
+    x² + 4y² = k のもとでの最大値を F(k) とすると、
+    F(k) = k/4。
+  </div>
+  したがって
+  <div class="formula">
+    F′(k) = 1/4 = λ.
+  </div>
+  つまりラグランジュ乗数 λ は、単なる「連立方程式を解くための補助変数」ではなく、
+  <b>制約値 k を少し変化させたとき、最適値がどれだけ変化するかを表す量</b>
+  です。最小値を選ぶと λ = −1/4 となり、同じ関係が成り立ちます。
+</div>
+
+<script>
+(function(){
+  const plot3d = document.getElementById("plot3d");
+  const plot2d = document.getElementById("plot2d");
+  const range = document.getElementById("kRange");
+  const kValue = document.getElementById("kValue");
+  const cardK = document.getElementById("cardK");
+  const cardXY = document.getElementById("cardXY");
+  const cardF = document.getElementById("cardF");
+  const cardLambda = document.getElementById("cardLambda");
+  const toggle = document.getElementById("toggleMin");
+  let mode = "max";
+
+  const n = 55;
+  const X=[],Y=[],Z=[];
+  for(let j=0;j<n;j++){
+    const y=-2.1+4.2*j/(n-1);
+    const xr=[],yr=[],zr=[];
+    for(let i=0;i<n;i++){
+      const x=-3.3+6.6*i/(n-1);
+      xr.push(x); yr.push(y); zr.push(x*y);
+    }
+    X.push(xr); Y.push(yr); Z.push(zr);
+  }
+
+  const surface={
+    type:"surface", x:X,y:Y,z:Z, opacity:.62,
+    colorscale:"Viridis", showscale:false, name:"z = xy",
+    hovertemplate:"x=%{x:.3f}<br>y=%{y:.3f}<br>z=%{z:.3f}<extra>z=xy</extra>"
+  };
+
+  function fmt(v){
+    return Math.abs(v)<1e-10 ? "0" : v.toFixed(3);
+  }
+
+  function update(k){
+    const s=Math.sqrt(k);
+    const sign=mode==="max"?1:-1;
+
+    // Extremum points: x = sqrt(k/2), y = sign*sqrt(k/8)
+    const x=sign*s/Math.sqrt(2);
+    const y=s/Math.sqrt(8);
+    const f=sign*k/4;
+    const lambda=sign/4;
+
+    const ex=[],ey=[],ez=[];
+    for(let i=0;i<=360;i++){
+      const t=2*Math.PI*i/360;
+      const xx=s*Math.cos(t);
+      const yy=(s/2)*Math.sin(t);
+      ex.push(xx); ey.push(yy); ez.push(xx*yy);
+    }
+
+    const curve={
+      type:"scatter3d",mode:"lines",x:ex,y:ey,z:ez,
+      line:{width:8},name:"制約曲線",
+      hovertemplate:"x=%{x:.3f}<br>y=%{y:.3f}<br>f=xy=%{z:.3f}<extra>x²+4y²=k</extra>"
+    };
+
+    const point={
+      type:"scatter3d",mode:"markers+text",
+      x:[x],y:[y],z:[f],
+      text:[mode==="max"?"最大点":"最小点"],
+      textposition:"top center",
+      marker:{size:8},
+      name:mode==="max"?"極大点":"極小点",
+      hovertemplate:"x=%{x:.3f}<br>y=%{y:.3f}<br>z=%{z:.3f}<extra>極値点</extra>"
+    };
+
+    // The symmetric partner has the same extremal value.
+    const x2=-x, y2=-y;
+    const partner={
+      type:"scatter3d",mode:"markers",
+      x:[x2],y:[y2],z:[f],
+      marker:{size:7},
+      name:"対称な極値点",
+      hovertemplate:"x=%{x:.3f}<br>y=%{y:.3f}<br>z=%{z:.3f}<extra>対称点</extra>"
+    };
+
+    Plotly.react(plot3d,[surface,curve,point,partner],{
+      margin:{l:0,r:0,t:8,b:0},
+      scene:{
+        xaxis:{title:"x",range:[-3.45,3.45]},
+        yaxis:{title:"y",range:[-2.25,2.25]},
+        zaxis:{title:"z = xy",range:[-2.8,2.8]},
+        aspectmode:"manual",
+        aspectratio:{x:1.35,y:.9,z:1.0},
+        camera:{eye:{x:1.55,y:1.35,z:1.2}}
+      },
+      legend:{x:.01,y:.99,bgcolor:"rgba(255,255,255,.82)"},
+      paper_bgcolor:"white"
+    },{responsive:true,displaylogo:false});
+
+    const ks=[];
+    for(let i=0;i<=100;i++) ks.push(.5+(10-.5)*i/100);
+    const vals=ks.map(q=>sign*q/4);
+
+    // A short tangent line centered at the current k.
+    const dk=1.25;
+    const tx=[Math.max(.5,k-dk),Math.min(10,k+dk)];
+    const ty=tx.map(q=>f+lambda*(q-k));
+
+    const curve2={
+      type:"scatter",mode:"lines",x:ks,y:vals,
+      line:{width:3},name:mode==="max"?"Fmax(k)=k/4":"Fmin(k)=-k/4"
+    };
+    const tangent={
+      type:"scatter",mode:"lines",x:tx,y:ty,
+      line:{dash:"dash",width:3},name:"接線（傾き λ）"
+    };
+    const current={
+      type:"scatter",mode:"markers",x:[k],y:[f],
+      marker:{size:11},name:"現在の点",
+      hovertemplate:"k=%{x:.2f}<br>F(k)=%{y:.3f}<extra></extra>"
+    };
+
+    Plotly.react(plot2d,[curve2,tangent,current],{
+      margin:{l:55,r:18,t:12,b:48},
+      xaxis:{title:"k",range:[.5,10]},
+      yaxis:{title:"F(k) = 最適値",range:[-2.7,2.7]},
+      legend:{x:.02,y:.98,bgcolor:"rgba(255,255,255,.82)"},
+      paper_bgcolor:"white"
+    },{responsive:true,displaylogo:false});
+
+    kValue.textContent=k.toFixed(1);
+    cardK.textContent=k.toFixed(1);
+    cardXY.textContent="("+fmt(x)+", "+fmt(y)+")";
+    cardF.textContent=fmt(f);
+    cardLambda.textContent=mode==="max"?"1/4":"−1/4";
+  }
+
+  range.addEventListener("input",()=>update(Number(range.value)));
+  document.getElementById("reset").addEventListener("click",()=>{
+    range.value="4"; mode="max"; toggle.textContent="最大・最小を切替"; update(4);
+  });
+  toggle.addEventListener("click",()=>{
+    mode=mode==="max"?"min":"max";
+    toggle.textContent=mode==="max"?"最大・最小を切替":"最大・最小を切替（現在：最小）";
+    update(Number(range.value));
+  });
+
+  update(4);
+})();
+</script>
+</body>
+</html>
